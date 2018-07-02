@@ -1,0 +1,70 @@
+sources:
+  habr:
+    class: annihilation.sources.rss.Rss
+    url: https://habr.com/rss/hubs/all/
+
+destinations:
+  django:
+    class: annihilation.destinations.to_django.CurrentEnvironment
+
+decomposers:
+  tags:
+    mapper: annihilation.mappers.simple.Assoc
+    source: habr.entries.*.tags.*
+    destination:
+      django:
+        model: test_app.Tag
+        unique_field: name
+
+    mapping:
+      name: term
+      slug:
+        from: term
+        tuners:
+          - slugify
+
+  authors:
+    mapper: annihilation.mappers.simple.Assoc
+    source: habr.entries.*.authors.*
+    destination:
+      django:
+        model: test_app.Author
+        unique_field: username
+
+    mapping:
+      username: name
+
+  entries:
+    using:
+      - tags
+      - authors
+    mapper: annihilation.mappers.simple.Assoc
+    source: habr.entries.*
+    destination:
+      django:
+        model: test_app.Entry
+        unique_field: extra_id
+    filters:
+      - required: title
+      - timedelta:
+          field: published
+          seconds: 86400
+#      - pre_contains:
+#          field: tags.*.term
+#          contains: Unity3D
+    mapping:
+      published:
+        from: published
+        tuners:
+          - datetime: "%a, %d %b %Y %H:%M:%S %Z"
+      content: summary_detail.value # or summary
+      extra_id: id
+      title: title
+      tags:
+        using: tags
+        query: tags.*.term
+        setter: m2m
+      authors:
+        using: authors
+        query: authors.*.name
+        setter: m2m

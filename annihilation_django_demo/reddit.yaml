@@ -1,0 +1,40 @@
+sources:
+  reddit_rss:
+    class: annihilation.sources.rss.Rss
+    url: https://www.reddit.com/r/news/.rss
+
+destinations:
+  django:
+    class: annihilation.destinations.to_django.CurrentEnvironment
+
+decomposers:
+  authors:
+    mapper: annihilation.mappers.simple.Assoc
+    source: reddit_rss.items.*.authors.*
+    destination:
+      django:
+        model: test_app.Author
+        unique_field: username
+    mapping:
+      username: name
+      remote_link: href
+
+  entries:
+    using:
+      - authors
+    mapper: annihilation.mappers.simple.Assoc
+    source: reddit_rss.items.*
+    destination:
+      django:
+        model: test_app.Entry
+        unique_field: extra_id
+    mapping:
+      title: title
+      content: content
+      extra_id: id
+      predefined_field:
+        constance: reddit
+      authors:
+        using: authors
+        query: authors.*.name
+        setter: m2m
